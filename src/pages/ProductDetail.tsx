@@ -1,10 +1,9 @@
-
 import { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
 import { Helmet } from "react-helmet";
 import { useToast } from "@/hooks/use-toast";
 import { ShoppingBag, Heart, Share2 } from "lucide-react";
-import { products, getColorLabel, Product } from "../utils/products";
+import { products, getColorLabel, Product, Color } from "../utils/products";
 import { useCart } from "../context/CartContext";
 import Navbar from "../components/layout/Navbar";
 import Footer from "../components/layout/Footer";
@@ -12,10 +11,10 @@ import Footer from "../components/layout/Footer";
 const ProductDetail = () => {
   const { id } = useParams<{ id: string }>();
   const [product, setProduct] = useState<Product | null>(null);
-  const [selectedColor, setSelectedColor] = useState<string>("");
+  const [selectedColor, setSelectedColor] = useState<Color>("black");
   const [currentImage, setCurrentImage] = useState<string>("");
   const [isLoading, setIsLoading] = useState<boolean>(true);
-  const { addToCart } = useCart();
+  const { addItem } = useCart();
   const { toast } = useToast();
 
   useEffect(() => {
@@ -37,15 +36,7 @@ const ProductDetail = () => {
 
   const handleAddToCart = () => {
     if (product) {
-      addToCart({
-        id: `${product.id}-${selectedColor}`,
-        productId: product.id,
-        name: product.name,
-        price: product.price,
-        color: selectedColor,
-        image: currentImage,
-        quantity: 1,
-      });
+      addItem(product, selectedColor);
       
       toast({
         title: "Produkt dodany do koszyka",
@@ -54,7 +45,7 @@ const ProductDetail = () => {
     }
   };
 
-  const handleColorChange = (color: string) => {
+  const handleColorChange = (color: Color) => {
     setSelectedColor(color);
   };
 
