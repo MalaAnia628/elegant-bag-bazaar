@@ -1,9 +1,10 @@
 
 import { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
-import { ArrowLeft, Check, Minus, Plus, ShoppingBag } from "lucide-react";
 import { Helmet } from "react-helmet";
-import { getProductById, getColorLabel, Product } from "../utils/products";
+import { useToast } from "@/hooks/use-toast";
+import { ShoppingBag, Heart, Share2 } from "lucide-react";
+import { products, getColorLabel, Product } from "../utils/products";
 import { useCart } from "../context/CartContext";
 import Navbar from "../components/layout/Navbar";
 import Footer from "../components/layout/Footer";
@@ -11,45 +12,83 @@ import Footer from "../components/layout/Footer";
 const ProductDetail = () => {
   const { id } = useParams<{ id: string }>();
   const [product, setProduct] = useState<Product | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [selectedImage, setSelectedImage] = useState(0);
-  const [selectedColor, setSelectedColor] = useState("");
-  const [quantity, setQuantity] = useState(1);
-  const [fadeIn, setFadeIn] = useState(false);
-  const { addItem } = useCart();
+  const [selectedColor, setSelectedColor] = useState<string>("");
+  const [currentImage, setCurrentImage] = useState<string>("");
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const { addToCart } = useCart();
+  const { toast } = useToast();
 
   useEffect(() => {
-    if (id) {
-      const fetchedProduct = getProductById(id);
-      if (fetchedProduct) {
-        setProduct(fetchedProduct);
-        setSelectedColor(fetchedProduct.colors[0]); // Default to first color
-      }
-      setLoading(false);
+    // Simulate data fetching
+    setIsLoading(true);
+    
+    setTimeout(() => {
+      const foundProduct = products.find((p) => p.id === id);
       
-      // Trigger animation after component mounts
-      setTimeout(() => {
-        setFadeIn(true);
-      }, 100);
-    }
+      if (foundProduct) {
+        setProduct(foundProduct);
+        setSelectedColor(foundProduct.colors[0]);
+        setCurrentImage(foundProduct.images[0]);
+      }
+      
+      setIsLoading(false);
+    }, 500);
   }, [id]);
 
   const handleAddToCart = () => {
-    if (product && selectedColor) {
-      addItem(product, selectedColor);
+    if (product) {
+      addToCart({
+        id: `${product.id}-${selectedColor}`,
+        productId: product.id,
+        name: product.name,
+        price: product.price,
+        color: selectedColor,
+        image: currentImage,
+        quantity: 1,
+      });
+      
+      toast({
+        title: "Produkt dodany do koszyka",
+        description: `${product.name} - ${getColorLabel(selectedColor)}`,
+      });
     }
   };
 
-  const incrementQuantity = () => setQuantity((prev) => prev + 1);
-  const decrementQuantity = () => setQuantity((prev) => (prev > 1 ? prev - 1 : 1));
+  const handleColorChange = (color: string) => {
+    setSelectedColor(color);
+  };
 
-  if (loading) {
+  const handleImageChange = (image: string) => {
+    setCurrentImage(image);
+  };
+
+  if (isLoading) {
     return (
       <>
         <Navbar />
-        <div className="container mx-auto px-4 py-32 flex justify-center items-center">
-          <div className="loading-shimmer h-6 w-32 rounded"></div>
-        </div>
+        <main className="pt-24 pb-16 container mx-auto px-4">
+          <div className="flex flex-col md:flex-row gap-8 animate-pulse">
+            <div className="md:w-1/2">
+              <div className="bg-gray-200 aspect-square rounded-lg"></div>
+              <div className="grid grid-cols-4 gap-2 mt-4">
+                {[1, 2, 3, 4].map((i) => (
+                  <div key={i} className="bg-gray-200 aspect-square rounded-lg"></div>
+                ))}
+              </div>
+            </div>
+            <div className="md:w-1/2">
+              <div className="h-8 bg-gray-200 rounded-full w-3/4 mb-4"></div>
+              <div className="h-4 bg-gray-200 rounded-full w-1/2 mb-8"></div>
+              <div className="h-6 bg-gray-200 rounded-full w-1/4 mb-8"></div>
+              <div className="space-y-4 mb-8">
+                <div className="h-4 bg-gray-200 rounded-full w-full"></div>
+                <div className="h-4 bg-gray-200 rounded-full w-full"></div>
+                <div className="h-4 bg-gray-200 rounded-full w-3/4"></div>
+              </div>
+              <div className="h-12 bg-gray-200 rounded-lg w-full mb-4"></div>
+            </div>
+          </div>
+        </main>
         <Footer />
       </>
     );
@@ -59,12 +98,17 @@ const ProductDetail = () => {
     return (
       <>
         <Navbar />
-        <div className="container mx-auto px-4 py-32 flex flex-col items-center justify-center">
-          <h2 className="text-2xl font-serif mb-4">Produkt nie znaleziony</h2>
-          <Link to="/products" className="btn-primary">
-            Wróć do kolekcji
-          </Link>
-        </div>
+        <main className="pt-24 pb-16 container mx-auto px-4">
+          <div className="text-center py-16 bg-white rounded-lg shadow-sm">
+            <h2 className="text-2xl font-serif mb-2">Produkt nie został znaleziony</h2>
+            <p className="text-gray-600 mb-8">
+              Przepraszamy, ale produkt, którego szukasz, nie istnieje lub został usunięty.
+            </p>
+            <Link to="/products" className="btn-primary py-3 px-8 rounded-md">
+              Wróć do sklepu
+            </Link>
+          </div>
+        </main>
         <Footer />
       </>
     );
@@ -73,41 +117,34 @@ const ProductDetail = () => {
   return (
     <>
       <Helmet>
-        <title>{`${product.name} - NeoBags`}</title>
-        <meta name="description" content={product.description.substring(0, 160)} />
+        <title>{product.name} - NeoBags</title>
+        <meta
+          name="description"
+          content={`${product.name} - elegancka torba na laptopa NeoBags. ${product.description}`}
+        />
       </Helmet>
 
       <Navbar />
 
       <main className="pt-24 pb-16 page-transition">
         <div className="container mx-auto px-4">
-          <Link 
-            to="/products" 
-            className="inline-flex items-center text-gray-600 hover:text-neobags-charcoal mb-8 transition-colors"
-          >
-            <ArrowLeft size={18} className="mr-2" />
-            <span>Powrót do kolekcji</span>
-          </Link>
-
-          <div className={`grid grid-cols-1 md:grid-cols-2 gap-12 transition-opacity duration-500 ${fadeIn ? 'opacity-100' : 'opacity-0'}`}>
+          <div className="flex flex-col md:flex-row gap-8">
             {/* Product Images */}
-            <div>
-              <div className="mb-4 rounded-lg overflow-hidden bg-gray-100">
+            <div className="md:w-1/2">
+              <div className="bg-gray-50 rounded-lg overflow-hidden mb-4">
                 <img
-                  src={product.images[selectedImage]}
+                  src={currentImage}
                   alt={product.name}
-                  className="w-full h-auto object-cover transition-transform duration-500 transform hover:scale-105"
+                  className="w-full h-auto object-contain aspect-square"
                 />
               </div>
-              <div className="flex space-x-4">
+              <div className="grid grid-cols-4 gap-2">
                 {product.images.map((image, index) => (
                   <button
                     key={index}
-                    onClick={() => setSelectedImage(index)}
-                    className={`rounded-md overflow-hidden w-20 h-20 border-2 transition-all ${
-                      selectedImage === index
-                        ? "border-neobags-gold"
-                        : "border-transparent"
+                    onClick={() => handleImageChange(image)}
+                    className={`bg-gray-50 rounded-lg overflow-hidden aspect-square ${
+                      currentImage === image ? "ring-2 ring-neobags-gold" : ""
                     }`}
                   >
                     <img
@@ -121,89 +158,69 @@ const ProductDetail = () => {
             </div>
 
             {/* Product Info */}
-            <div className="flex flex-col">
-              <div className="bg-neobags-cream/30 inline-block px-3 py-1 rounded-full text-sm mb-4">
-                Kolekcja {product.collection}
-              </div>
-              
-              <h1 className="text-3xl md:text-4xl font-serif mb-4">{product.name}</h1>
-              
-              <div className="text-2xl font-medium mb-6">{product.price} zł</div>
-              
-              <p className="text-gray-700 mb-6">{product.description}</p>
-              
-              {/* Color Selection */}
+            <div className="md:w-1/2">
               <div className="mb-6">
-                <h3 className="text-sm font-medium mb-3">Kolor: {getColorLabel(selectedColor)}</h3>
-                <div className="flex space-x-3">
+                <h1 className="text-3xl font-serif mb-2">{product.name}</h1>
+                <p className="text-sm text-gray-500 mb-2">
+                  Kolekcja: {product.collection}
+                </p>
+                <p className="text-2xl font-medium">{product.price} zł</p>
+              </div>
+
+              <div className="mb-6">
+                <h3 className="text-sm font-medium mb-3">Kolor:</h3>
+                <div className="flex flex-wrap gap-2">
                   {product.colors.map((color) => (
                     <button
                       key={color}
-                      onClick={() => setSelectedColor(color)}
-                      className={`w-8 h-8 rounded-full border transition-all ${
-                        selectedColor === color
-                          ? "ring-2 ring-neobags-gold ring-offset-2"
-                          : "border-gray-300"
+                      onClick={() => handleColorChange(color)}
+                      className={`w-8 h-8 rounded-full border ${
+                        selectedColor === color ? "ring-2 ring-offset-2 ring-neobags-gold" : ""
                       }`}
-                      style={{
-                        backgroundColor: getColorBackground(color),
-                      }}
+                      style={{ backgroundColor: color }}
                       title={getColorLabel(color)}
-                    >
-                      {selectedColor === color && (
-                        <span className="flex items-center justify-center h-full">
-                          <Check 
-                            size={14} 
-                            className={color === 'black' || color === 'navy' || color === 'burgundy' ? 'text-white' : 'text-neobags-charcoal'} 
-                          />
-                        </span>
-                      )}
-                    </button>
+                    ></button>
                   ))}
                 </div>
+                <p className="text-sm mt-2">
+                  Wybrany kolor: <span className="font-medium">{getColorLabel(selectedColor)}</span>
+                </p>
               </div>
 
-              {/* Quantity */}
-              <div className="flex items-center mb-6">
-                <span className="text-sm font-medium mr-4">Ilość:</span>
-                <div className="flex items-center border border-gray-300 rounded-md">
-                  <button
-                    onClick={decrementQuantity}
-                    className="px-3 py-2 hover:bg-gray-100 transition-colors"
-                  >
-                    <Minus size={16} />
+              <div className="mb-8">
+                <h3 className="text-sm font-medium mb-2">Opis:</h3>
+                <p className="text-gray-600">{product.description}</p>
+              </div>
+
+              <div className="space-y-4">
+                <button
+                  onClick={handleAddToCart}
+                  className="w-full btn-primary py-3 flex items-center justify-center"
+                >
+                  <ShoppingBag className="mr-2" size={18} />
+                  Dodaj do koszyka
+                </button>
+
+                <div className="flex gap-4">
+                  <button className="flex-1 btn-outline py-3 flex items-center justify-center">
+                    <Heart className="mr-2" size={18} />
+                    Ulubione
                   </button>
-                  <span className="px-4 py-2 border-l border-r border-gray-300">
-                    {quantity}
-                  </span>
-                  <button
-                    onClick={incrementQuantity}
-                    className="px-3 py-2 hover:bg-gray-100 transition-colors"
-                  >
-                    <Plus size={16} />
+                  <button className="flex-1 btn-outline py-3 flex items-center justify-center">
+                    <Share2 className="mr-2" size={18} />
+                    Udostępnij
                   </button>
                 </div>
               </div>
 
-              {/* Add to Cart */}
-              <button
-                onClick={handleAddToCart}
-                className="btn-primary flex items-center justify-center"
-              >
-                <ShoppingBag className="mr-2" size={18} />
-                <span>Dodaj do koszyka</span>
-              </button>
-
-              {/* Features */}
-              <div className="mt-10">
-                <h3 className="text-lg font-medium mb-4">Cechy produktu</h3>
-                <ul className="space-y-2">
-                  {product.features.map((feature, index) => (
-                    <li key={index} className="flex items-start">
-                      <span className="text-neobags-gold mr-2">•</span>
-                      <span>{feature}</span>
-                    </li>
-                  ))}
+              <div className="mt-8 border-t border-gray-100 pt-6">
+                <h3 className="text-sm font-medium mb-3">Szczegóły:</h3>
+                <ul className="space-y-2 text-sm text-gray-600">
+                  <li>Materiał: {product.material}</li>
+                  <li>Wymiary: 36 x 26 x 5 cm</li>
+                  <li>Mieści laptopy do 15"</li>
+                  <li>Wodoodporna wyściółka</li>
+                  <li>Wiele kieszeni wewnętrznych</li>
                 </ul>
               </div>
             </div>
@@ -214,19 +231,6 @@ const ProductDetail = () => {
       <Footer />
     </>
   );
-};
-
-// Helper function to get background color based on color name
-const getColorBackground = (color: string): string => {
-  const colorMap: Record<string, string> = {
-    black: '#000000',
-    brown: '#795548',
-    navy: '#0a192f',
-    burgundy: '#800020',
-    beige: '#e8e0d5',
-    grey: '#9e9e9e',
-  };
-  return colorMap[color] || color;
 };
 
 export default ProductDetail;
